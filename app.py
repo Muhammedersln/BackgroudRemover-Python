@@ -17,7 +17,6 @@ def normPRED(d):
 
 # Save the output image
 def save_output_with_transparency(image_name, pred, d_dir):
-    # Load the original image
     original_image = Image.open(image_name).convert("RGBA")
     predict = pred.squeeze().cpu().data.numpy()
     
@@ -26,14 +25,17 @@ def save_output_with_transparency(image_name, pred, d_dir):
     
     empty_background = Image.new("RGBA", original_image.size, (0, 0, 0, 0))
     result_image = Image.composite(original_image, empty_background, mask)
-    
 
     result_path = os.path.join(d_dir, os.path.basename(image_name).split(".")[0] + '_result.png')
     result_image.save(result_path)
     return result_path
 
 def process_image(image_path, model):
-    test_salobj_dataset = SalObjDataset(img_name_list=[image_path], lbl_name_list=[], transform=transforms.Compose([RescaleT(320), ToTensorLab(flag=0)]))
+    test_salobj_dataset = SalObjDataset(
+        img_name_list=[image_path], 
+        lbl_name_list=[], 
+        transform=transforms.Compose([RescaleT(320), ToTensorLab(flag=0)])
+    )
     test_salobj_dataloader = DataLoader(test_salobj_dataset, batch_size=1, shuffle=False, num_workers=1)
 
     model.eval()
@@ -50,9 +52,22 @@ def process_image(image_path, model):
 
 # Main function to run Streamlit app
 def main():
-    st.title("Arka Plan Kaldırma Uygulaması")
-    st.write("Görüntü yükleyin ve arka planını kaldırın.")
+    # Use a light theme and improve UI with a sidebar for better user experience
+    st.set_page_config(page_title="Arka Plan Kaldırma Uygulaması", page_icon="🌄", layout="centered")
+    
+    st.markdown(
+        """
+        <style>
+        .main { background-color: #f9f9f9; padding: 20px; border-radius: 10px; }
+        .stButton>button { border-radius: 5px; background-color: #4CAF50; color: white; }
+        .stDownloadButton>button { background-color: #FF5722; color: white; border-radius: 5px; }
+        </style>
+        """, unsafe_allow_html=True
+    )
 
+    st.title("🖼️ Arka Plan Kaldırma Uygulaması")
+    st.write("Yüklediğiniz görseldeki arka planı kaldırın ve şeffaf bir arka planla indirip kullanın!")
+    
     uploaded_file = st.file_uploader("Bir görüntü seçin...", type=["jpg", "jpeg", "png"])
     
     if uploaded_file is not None:
@@ -69,15 +84,15 @@ def main():
             model.load_state_dict(torch.load(model_dir, map_location=torch.device('cpu')))
         
         if st.button("Arka Planı Kaldır"):
-            with st.spinner('İşleniyor...'):
+            with st.spinner('🔄 İşleniyor...'):
                 pred = process_image("uploaded_image.png", model)
                 result_path = save_output_with_transparency("uploaded_image.png", pred, "./")
                 
                 st.image(result_path, caption="Arka Planı Kaldırılmış Görüntü", use_column_width=True)
-
+                
                 with open(result_path, "rb") as file:
-                    btn = st.download_button(
-                        label="Görseli İndir",
+                    st.download_button(
+                        label="Görseli İndir 📥",
                         data=file,
                         file_name=os.path.basename(result_path),
                         mime="image/png"
